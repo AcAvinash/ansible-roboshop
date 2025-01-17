@@ -1,3 +1,4 @@
+---
 - name: create redis component
   hosts: redis
   become: yes
@@ -18,3 +19,4 @@
         name: redis
         state: started
         enabled: yes
+
