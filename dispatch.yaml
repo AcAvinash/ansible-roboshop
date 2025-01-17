@@ -44,12 +44,17 @@
         dest: /app
         remote_src: yes
 
+    - name: Check if go.mod exists
+      ansible.builtin.stat:
+        path: /app/go.mod
+      register: go_mod
+
     - name: Initialize Go modules if go.mod doesn't exist
       ansible.builtin.command:
         cmd: go mod init dispatch
       args:
         chdir: /app
-      when: not ansible_facts['files']['/app/go.mod']
+      when: not go_mod.stat.exists
 
     - name: Get Go dependencies
       ansible.builtin.command:
@@ -77,4 +82,5 @@
         name: dispatch
         state: started
         enabled: true
+
 
