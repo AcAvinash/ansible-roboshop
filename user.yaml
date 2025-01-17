@@ -79,6 +79,11 @@
         name: mongodb-mongosh
         state: installed
 
-    - name: Load schema
-      ansible.builtin.command:
-        cmd: mongosh --host mongodb.joindevops.fun </app/schema/user.js
+    - name: load user data
+      ansible.builtin.command: mongosh --host mongodb.joindevops.fun < /app/schema/user.js
+
+    - name: restart user
+      ansible.builtin.service:
+        name: user
+        state: restarted
+        enabled: true
