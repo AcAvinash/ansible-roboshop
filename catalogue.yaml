@@ -81,19 +81,10 @@
         state: installed
 
     - name: Load catalogue schema into MongoDB
-      ansible.builtin.command:
-        cmd: mongosh --host mongodb.joindevops.fun </app/schema/catalogue.js
+      ansible.builtin.shell:
+        cmd: mongosh --host mongodb.joindevops.fun /app/schema/catalogue.js
 
     - name: Restart catalogue service
       ansible.builtin.service:
         name: catalogue
         state: restarted
-
-
-
-
-    
-
-
-
-     
