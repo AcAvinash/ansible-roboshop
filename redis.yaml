@@ -1,0 +1,19 @@
+- name: installin redis
+  ansible.builtin.dnf:
+   name: redis
+   state: installed
+
+- name: changing the config
+  ansible.builtin.replace:
+   path: /etc/redis.conf
+   regexp: '127.0.0.1'
+   replace: '0.0.0.0'
+
+- name: starting redis
+  ansible.builtin.service:
+   name: redis
+   state: started
+   enabled: true
+
+   
+  

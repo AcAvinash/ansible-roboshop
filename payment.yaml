@@ -1,0 +1,58 @@
+- name: creating payment component
+  hosts: payment
+  become: yes
+  tasks:
+    - name: Install Python
+      ansible.builtin.dnf:
+        name: "{{item}}"
+        state: installed
+      loop:
+        - python36
+        - gcc
+        - python3-devel
+
+    - name: check roboshop user exist or not
+      ansible.builtin.command: id roboshop
+      register: out #output is variable name
+      ignore_errors: true
+
+    - when: out.rc != 0
+      name: create user roboshop
+      become: yes # we need sudo access for this task only
+      ansible.builtin.user:
+        name: roboshop
+
+    - name: check /app directory exists or not
+      ansible.builtin.stat:
+      path: /app
+      register: directory
+
+    - name: print the directory stats
+      ansible.builtin.debug:
+      msg: "output: {{directory}}"
+
+    - when: directory.stat.exists == False
+      name: create /app directory
+      ansible.builtin.file:
+      path: /app
+      state: directory
+
+    - name: download the dependencies
+      ansible.builtin.command: pip3.11 install -r requirements.txt
+      args:
+        chdir: /app
+
+    - name: copy payment service
+      ansible.builtin.copy:
+        src: payment.service
+        dest: /etc/systemd/system/payment.service
+
+    - name: daemon-reload
+      ansible.builtin.systemd:
+        daemon-reload: true
+
+    - name: enable and start payment service
+      ansible.builtin.systemd:
+        name: payment
+        state: started
+        enabled: true
