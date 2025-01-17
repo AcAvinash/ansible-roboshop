@@ -1,4 +1,4 @@
-- name: create dispatch component
+- name: Create dispatch component
   hosts: dispatch
   become: true
   tasks:
@@ -7,13 +7,13 @@
         name: golang
         state: installed
 
-    - name: Check if user exists
+    - name: Check if roboshop user exists
       ansible.builtin.command:
         cmd: id roboshop
       register: output
       ignore_errors: true
 
-    - name: Create user roboshop if not exists
+    - name: Create roboshop user if not exists
       ansible.builtin.user:
         name: roboshop
       when: output.rc != 0
@@ -36,7 +36,7 @@
     - name: Download the application code
       ansible.builtin.get_url:
         url: https://roboshop-builds.s3.amazonaws.com/dispatch.zip
-        dest: /tmp
+        dest: /tmp/dispatch.zip
 
     - name: Unzip the application code
       ansible.builtin.unarchive:
@@ -44,12 +44,22 @@
         dest: /app
         remote_src: yes
 
-    - name: Change directory and build the application
-      ansible.builtin.shell: "{{ item }}"
-      loop:
-        - go mod init dispatch
-        - go get
-        - go build
+    - name: Initialize Go modules if go.mod doesn't exist
+      ansible.builtin.command:
+        cmd: go mod init dispatch
+      args:
+        chdir: /app
+      when: not ansible_facts['files']['/app/go.mod']
+
+    - name: Get Go dependencies
+      ansible.builtin.command:
+        cmd: go get
+      args:
+        chdir: /app
+
+    - name: Build the Go application
+      ansible.builtin.command:
+        cmd: go build
       args:
         chdir: /app
 
@@ -67,3 +77,4 @@
         name: dispatch
         state: started
         enabled: true
+

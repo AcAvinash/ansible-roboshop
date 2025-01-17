@@ -1,19 +1,20 @@
-- name: installin redis
+- name: Install Redis
   ansible.builtin.dnf:
-   name: redis
-   state: installed
+    name: redis
+    state: installed
 
-- name: changing the config
+- name: Change Redis configuration to allow remote connections
   ansible.builtin.replace:
-   path: /etc/redis.conf
-   regexp: '127.0.0.1'
-   replace: '0.0.0.0'
+    path: /etc/redis.conf
+    regexp: '127.0.0.1'
+    replace: '0.0.0.0'
 
-- name: starting redis
+- name: Start and enable Redis service
   ansible.builtin.service:
-   name: redis
-   state: started
-   enabled: true
+    name: redis
+    state: started
+    enabled: yes
+
 
    
   

@@ -1,77 +1,74 @@
-- name: Install catalogue component
+- name: Install cart component
   hosts: cart
   become: yes
   tasks:
-    - name: disable catalogue component
-      ansible.builtin.disable:
-        name: nodejs
-        state: absent
+    - name: Disable Node.js module
+      ansible.builtin.command:
+        cmd: dnf module disable nodejs -y
 
-    - name: enabling nodejs component
-      ansible.builtin.enable:
-        name: nodejs:20
-        state: present
+    - name: Enable Node.js 20 module
+      ansible.builtin.command:
+        cmd: dnf module enable nodejs:20 -y
 
-    - name: installing nodejs
+    - name: Install Node.js
       ansible.builtin.dnf:
         name: nodejs
         state: installed
 
-    - name: check roboshop user exist or not
-      ansible.builtin.command: id roboshop
-      register: out #output is variable name
+    - name: Check if roboshop user exists
+      ansible.builtin.command:
+        cmd: id roboshop
+      register: out
       ignore_errors: true
 
-    - when: out.rc != 0
-      name: create user roboshop
-      become: yes # we need sudo access for this task only
+    - name: Create roboshop user if not exists
       ansible.builtin.user:
         name: roboshop
+      when: out.rc != 0
 
-    - name: check /app directory exists or not
+    - name: Check if /app directory exists
       ansible.builtin.stat:
-      path: /app
+        path: /app
       register: directory
 
-    - name: print the directory stats
-      ansible.builtin.debug:
-      msg: "output: {{directory}}"
-
-    - when: directory.stat.exists == False
-      name: create /app directory
+    - name: Create /app directory if not exists
       ansible.builtin.file:
-      path: /app
-      state: directory
-    
-    - name: downlaod the application code
+        path: /app
+        state: directory
+      when: directory.stat.exists == False
+
+    - name: Download the application code
       ansible.builtin.get_url:
         url: https://roboshop-builds.s3.amazonaws.com/cart.zip
         dest: /tmp/cart.zip
 
-    - name: extract the application code
+    - name: Extract the application code
       ansible.builtin.unarchive:
         src: /tmp/cart.zip
         dest: /app
+        remote_src: yes
 
-    - name: change directory to /app
-      ansible.builtin.command: npm install
+    - name: Install application dependencies
+      ansible.builtin.command:
+        cmd: npm install
       args:
         chdir: /app
 
-    - name: copy the cart service
+    - name: Set up cart service
       ansible.builtin.copy:
         src: cart.service
         dest: /etc/systemd/system/cart.service
-      
-    - name: daemon-reload
+
+    - name: Reload systemd daemon
       ansible.builtin.systemd:
         daemon_reload: true
 
-    - name: start the cart service
+    - name: Start and enable cart service
       ansible.builtin.service:
-      start: cart
-      service: started
-      enabled: true
+        name: cart
+        state: started
+        enabled: true
+
       
 
     

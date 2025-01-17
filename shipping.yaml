@@ -1,88 +1,88 @@
-- name: creating shipping component
+- name: Create shipping component
   hosts: shipping
   become: yes
   tasks:
-    - name: install maven
+    - name: Install Maven
       ansible.builtin.dnf:
         name: maven
         state: installed
 
-    - name: check user exist or not
-      ansible.builtin.command: id roboshop
+    - name: Check if roboshop user exists
+      ansible.builtin.command:
+        cmd: id roboshop
       register: output
       ignore_errors: true
 
-    - when: output.rc!=0
-      name: create user roboshop
-      become: yes
+    - name: Create roboshop user if not exists
       ansible.builtin.user:
         name: roboshop
-        
-    - name: check /app directory exists or not
+      when: output.rc != 0
+
+    - name: Check if /app directory exists
       ansible.builtin.stat:
-      path: /app
+        path: /app
       register: directory
 
-    - name: print the directory stats
-      ansible.builtin.debug:
-      msg: "output: {{directory}}"
-
-    - when: directory.stat.exists == False
-      name: create /app directory
+    - name: Create /app directory if not exists
       ansible.builtin.file:
-      path: /app
-      state: directory
+        path: /app
+        state: directory
+      when: directory.stat.exists == False
 
-    - name: download the application code
+    - name: Download the application code
       ansible.builtin.get_url:
         url: https://roboshop-builds.s3.amazonaws.com/shipping.zip
-        dest: /tmp
+        dest: /tmp/shipping.zip
 
-    - name: unzip the downloaded file
+    - name: Extract the application code
       ansible.builtin.unarchive:
         src: /tmp/shipping.zip
         dest: /app
+        remote_src: yes
 
-    - name: build the application
-      ansible.builtin.command: mvn clean package
+    - name: Build the application
+      ansible.builtin.command:
+        cmd: mvn clean package
       args:
         chdir: /app
-    
-    - name: moving the file
-      ansible.builtin.copy:
-        src: target/shipping-1.0.jar
-        dest: shipping.jar
 
-    - name: copy the shipping service
+    - name: Move the JAR file
+      ansible.builtin.command:
+        cmd: mv /app/target/shipping-1.0.jar /app/shipping.jar
+
+    - name: Set up the shipping service
       ansible.builtin.copy:
         src: shipping.service
         dest: /etc/systemd/system/shipping.service
 
-    - name: daemon-reload
+    - name: Reload systemd daemon
       ansible.builtin.systemd:
         daemon_reload: true
 
-    - name: start the service
+    - name: Start and enable the shipping service
       ansible.builtin.service:
         name: shipping
         state: started
         enabled: true
-    
-    - name: install mysql
+
+    - name: Install MySQL client
       ansible.builtin.dnf:
         name: mysql
         state: installed
 
-    - name: load schema of schema.sql
-      ansible.builtin.command: mysql -h mysql.joindevops.fun -uroot -pRoboShop@1 < /app/db/schema.sql
+    - name: Load schema.sql
+      ansible.builtin.command:
+        cmd: mysql -h mysql.joindevops.fun -uroot -pRoboShop@1 < /app/db/schema.sql
 
-    - name: load schema of app-user.sql 
-      ansible.builtin.command: mysql -h mysql.joindevops.fun -uroot -pRoboShop@1 < /app/db/app-user.sql
-      
-    - name: load schema of master-data.sql
-      ansible.builtin.command: mysql -h mysql.joindevops.fun -uroot -pRoboShop@1 < /app/db/master-data.sql
+    - name: Load app-user.sql
+      ansible.builtin.command:
+        cmd: mysql -h mysql.joindevops.fun -uroot -pRoboShop@1 < /app/db/app-user.sql
 
-    - name: restart shipping
+    - name: Load master-data.sql
+      ansible.builtin.command:
+        cmd: mysql -h mysql.joindevops.fun -uroot -pRoboShop@1 < /app/db/master-data.sql
+
+    - name: Restart the shipping service
       ansible.builtin.systemd:
         name: shipping
         state: restarted

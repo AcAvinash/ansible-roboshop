@@ -1,90 +1,84 @@
 - name: Installing User Component
-  #host should be checked
   hosts: user
   become: yes
   tasks:
-    - name: disable node
-      ansible.builtin.disable:
-        name: node.js
-        state: absent
+    - name: Disable old Node.js module
+      ansible.builtin.command:
+        cmd: dnf module disable nodejs -y
 
-    - name: enabling node
-      #i have to check this here
-      ansible.builtin.enable:
-        name: nodejs:20
-        state: enabled
+    - name: Enable Node.js 20 module
+      ansible.builtin.command:
+        cmd: dnf module enable nodejs:20 -y
 
-    - name: installing node
+    - name: Install Node.js
       ansible.builtin.dnf:
         name: nodejs
         state: installed
 
-    - name: check that user exist or not
-      ansible.builtin.command: id roboshop
+    - name: Check if roboshop user exists
+      ansible.builtin.command:
+        cmd: id roboshop
       register: output
       ignore_errors: true
 
-    - when: output.rc!=0
-      name: create user roboshop
-      become: yes
+    - name: Create roboshop user if not exists
       ansible.builtin.user:
         name: roboshop
+      when: output.rc != 0
 
-    - name: check /app directory exists or not
+    - name: Check if /app directory exists
       ansible.builtin.stat:
         path: /app
       register: directory
 
-    - name: print the directory stats
-      ansible.builtin.debug:
-        msg: "output: {{directory}}"
-
-    - when: directory.stat.exists == False
-      name: create /app directory
+    - name: Create /app directory if not exists
       ansible.builtin.file:
         path: /app
         state: directory
+      when: directory.stat.exists == False
 
     - name: Download the application code
       ansible.builtin.get_url:
         url: https://roboshop-builds.s3.amazonaws.com/user.zip
         dest: /tmp
 
-    - name: extract user artifact
+    - name: Extract user artifact
       ansible.builtin.unarchive:
-      src: /tmp/user.zip
-      dest: /app
-      remote_src: yes
+        src: /tmp/user.zip
+        dest: /app
+        remote_src: yes
 
-    - name: install dependencies
-      ansible.builtin.command: npm install
+    - name: Install dependencies
+      ansible.builtin.command:
+        cmd: npm install
       args:
         chdir: /app
 
-    - name: create user service
+    - name: Set up user service
       ansible.builtin.copy:
-      src: user.service
-      dest: /etc/systemd/system/user.service
+        src: user.service
+        dest: /etc/systemd/system/user.service
 
-    - name: daemon-reload
+    - name: Reload systemd daemon
       ansible.builtin.systemd:
         daemon_reload: true
 
-    - name: start user service
+    - name: Start and enable user service
       ansible.builtin.systemd:
         name: user
         state: started
         enabled: true
 
-    - name: copy mongo repo to yum.repos.d
+    - name: Copy MongoDB repo to yum.repos.d
       ansible.builtin.copy:
         src: mongo.repo
         dest: /etc/yum.repos.d/mongo.repo
 
-    - name: install mongodb-mongosh
+    - name: Install MongoDB shell
       ansible.builtin.dnf:
         name: mongodb-mongosh
         state: installed
-    
-    - name: load schema 
-      ansible.builtin.command: mongosh --host mongodb.joindevops.fun </app/schema/user.js
+
+    - name: Load schema
+      ansible.builtin.command:
+        cmd: mongosh --host mongodb.joindevops.fun </app/schema/user.js
